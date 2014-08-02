@@ -1,4 +1,4 @@
-/*! Flight v1.0.5 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.6 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -194,7 +194,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     function teardownAll() {
       var componentInfo = registry.findComponentInfo(this);
 
-      componentInfo && componentInfo.instances.slice().forEach(function(info) {
+      componentInfo && Object.keys(componentInfo.instances).forEach(function(k) {
+        var info = componentInfo.instances[k];
         info.instance.teardown();
       });
     }
@@ -360,6 +361,13 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       var options = utils.merge.apply(utils, args);
 
       $(selector).each(function(i, node) {
+        var rawNode = node.jQuery ? node[0] : node;
+        var componentInfo = registry.findComponentInfo(this)
+        if (componentInfo && componentInfo.isAttachedTo(rawNode)) {
+          //already attached
+          return;
+        }
+
         new this(node, options);
       }.bind(this));
     }
@@ -386,10 +394,13 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return prettyPrintMixins;
       };
 
+      if (window.DEBUG && window.DEBUG.enabled) {
+        Component.describe = Component.toString();
+      }
+
       //'options' is optional hash to be merged with 'defaults' in the component definition
       function Component(node, options) {
         options = options || {};
-
         this.identity = componentId++;
 
         if (!node) {
@@ -406,7 +417,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         this.toString = Component.toString;
         if (window.DEBUG && window.DEBUG.enabled) {
-          this.describe = Component.toString();
+          this.describe = this.toString();
         }
 
         //merge defaults with supplied options
@@ -695,38 +706,30 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       function ComponentInfo(component) {
         this.component = component;
-        this.instances = [];
+        this.attachedTo = [];
+        this.instances = {};
 
         this.addInstance = function(instance) {
-          this.throwIfInstanceExistsOnNode(instance);
-
           var instanceInfo = new InstanceInfo(instance);
-          this.instances.push(instanceInfo);
+          this.instances[instance.identity] = instanceInfo;
+          this.attachedTo.push(instance.node);
 
           return instanceInfo;
         }
 
-        this.throwIfInstanceExistsOnNode = function(instance) {
-          this.instances.forEach(function (instanceInfo) {
-            if (instanceInfo.instance.$node[0] === instance.$node[0]) {
-              throw new Error('Instance of ' + instance.constructor + ' already exists on node ' + instance.$node[0]);
-            }
-          });
-        }
-
         this.removeInstance = function(instance) {
-          var instanceInfo = this.instances.filter(function(instanceInfo) {
-            return instanceInfo.instance == instance;
-          })[0];
-
-          var index = this.instances.indexOf(instanceInfo);
-
-          (index > -1)  && this.instances.splice(index, 1);
+          delete this.instances[instance.identity];
+          var indexOfNode = this.attachedTo.indexOf(instance.node);
+          (indexOfNode > -1) && this.attachedTo.splice(indexOfNode, 1);
 
           if (!this.instances.length) {
             //if I hold no more instances remove me from registry
             registry.removeComponentInfo(this);
           }
+        }
+
+        this.isAttachedTo = function(node) {
+          return this.attachedTo.indexOf(node) > -1;
         }
       }
 
@@ -768,7 +771,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         //remove from component info
         var componentInfo = this.findComponentInfo(instance);
-        componentInfo.removeInstance(instance);
+        componentInfo && componentInfo.removeInstance(instance);
 
         //remove from registry
         delete this.allInstances[instance.identity];
