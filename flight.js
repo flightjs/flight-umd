@@ -1,4 +1,4 @@
-/*! Flight v1.1.0 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.1.1 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -68,7 +68,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     __webpack_require__(4),
     __webpack_require__(5),
     __webpack_require__(6)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function (advice, component, compose, logger, registry, utils) {
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, component, compose, logger, registry, utils) {
+    'use strict';
 
     return {
       advice: advice,
@@ -92,12 +93,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-"use strict";
-
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [
-    __webpack_require__(6),
     __webpack_require__(3)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function (util, compose) {
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(compose) {
+    'use strict';
 
     var advice = {
 
@@ -109,7 +108,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           for (; i < l; i++) args[i + 1] = arguments[i];
 
           return wrapped.apply(this, args);
-        }
+        };
       },
 
       before: function(base, before) {
@@ -117,7 +116,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return function composedBefore() {
           beforeFn.apply(this, arguments);
           return base.apply(this, arguments);
-        }
+        };
       },
 
       after: function(base, after) {
@@ -126,7 +125,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           var res = (base.unbound || base).apply(this, arguments);
           afterFn.apply(this, arguments);
           return res;
-        }
+        };
       },
 
       // a mixin that allows other mixins to augment existing functions by adding additional
@@ -137,10 +136,12 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
             compose.unlockProperty(this, method, function() {
               if (typeof this[method] == 'function') {
-                return this[method] = advice[m](this[method], fn);
+                this[method] = advice[m](this[method], fn);
               } else {
-                return this[method] = fn;
+                this[method] = fn;
               }
+
+              return this[method];
             });
 
           };
@@ -162,8 +163,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-"use strict";
-
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [
     __webpack_require__(1),
     __webpack_require__(6),
@@ -173,10 +172,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     __webpack_require__(4),
     __webpack_require__(8)
   ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, utils, compose, withBase, registry, withLogging, debug) {
+    'use strict';
 
     var functionNameRegEx = /function (.*?)\s?\(/;
 
-    //teardown for all instances of this constructor
+    // teardown for all instances of this constructor
     function teardownAll() {
       var componentInfo = registry.findComponentInfo(this);
 
@@ -192,7 +192,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       } catch(e) {
         console.log('unserializable data for event',type,':',data);
         throw new Error(
-          ["The event", type, "on component", this.toString(), "was triggered with non-serializable data"].join(" ")
+          ['The event', type, 'on component', this.toString(), 'was triggered with non-serializable data'].join(' ')
         );
       }
     }
@@ -204,16 +204,15 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
 
       if (!selector) {
-        throw new Error("Component needs to be attachTo'd a jQuery object, native node or selector string");
+        throw new Error('Component needs to be attachTo\'d a jQuery object, native node or selector string');
       }
 
       var options = utils.merge.apply(utils, args);
+      var componentInfo = registry.findComponentInfo(this);
 
       $(selector).each(function(i, node) {
-        var rawNode = node.jQuery ? node[0] : node;
-        var componentInfo = registry.findComponentInfo(this)
-        if (componentInfo && componentInfo.isAttachedTo(rawNode)) {
-          //already attached
+        if (componentInfo && componentInfo.isAttachedTo(node)) {
+          // already attached
           return;
         }
 
@@ -227,7 +226,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     function define(/*mixins*/) {
       // unpacking arguments by hand benchmarked faster
       var l = arguments.length;
-      var mixins = new Array(l + 3); //add three for common mixins
+      // add three for common mixins
+      var mixins = new Array(l + 3);
       for (var i = 0; i < l; i++) mixins[i] = arguments[i];
 
       var Component = function() {};
@@ -235,11 +235,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       Component.toString = Component.prototype.toString = function() {
         var prettyPrintMixins = mixins.map(function(mixin) {
           if (mixin.name == null) {
-            //function name property not supported by this browser, use regex
+            // function name property not supported by this browser, use regex
             var m = mixin.toString().match(functionNameRegEx);
-            return (m && m[1]) ? m[1] : "";
+            return (m && m[1]) ? m[1] : '';
           } else {
-            return (mixin.name != "withBase") ? mixin.name : "";
+            return (mixin.name != 'withBase') ? mixin.name : '';
           }
         }).filter(Boolean).join(', ');
         return prettyPrintMixins;
@@ -249,7 +249,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         Component.describe = Component.prototype.describe = Component.toString();
       }
 
-      //'options' is optional hash to be merged with 'defaults' in the component definition
+      // 'options' is optional hash to be merged with 'defaults' in the component definition
       Component.attachTo = attachTo;
       Component.teardownAll = teardownAll;
 
@@ -284,15 +284,14 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-"use strict";
-
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [
     __webpack_require__(6),
     __webpack_require__(8)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(util, debug) {
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(utils, debug) {
+    'use strict';
 
     //enumerables are shims - getOwnPropertyDescriptor shim doesn't work
-    var canWriteProtect = debug.enabled && !util.isEnumerable(Object, 'getOwnPropertyDescriptor');
+    var canWriteProtect = debug.enabled && !utils.isEnumerable(Object, 'getOwnPropertyDescriptor');
     //whitelist of unlockable property names
     var dontLock = ['mixedIn'];
 
@@ -371,37 +370,34 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-"use strict";
-
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [
-    __webpack_require__(3),
     __webpack_require__(6)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function (compose, util) {
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(utils) {
+    'use strict';
 
     var actionSymbols = {
-      on:'<-',
+      on: '<-',
       trigger: '->',
       off: 'x '
     };
 
     function elemToString(elem) {
       var tagStr = elem.tagName ? elem.tagName.toLowerCase() : elem.toString();
-      var classStr = elem.className ? "." + (elem.className) : "";
+      var classStr = elem.className ? '.' + (elem.className) : '';
       var result = tagStr + classStr;
       return elem.tagName ? ['\'', '\''].join(result) : result;
     }
 
     function log(action, component, eventArgs) {
-
-      var name, elem, fn, fnName, logFilter, toRegExp, actionLoggable, nameLoggable;
+      var name, elem, fn, logFilter, toRegExp, actionLoggable, nameLoggable;
 
       if (typeof eventArgs[eventArgs.length-1] == 'function') {
         fn = eventArgs.pop();
-        fn = fn.unbound || fn; //use unbound version if any (better info)
+        fn = fn.unbound || fn; // use unbound version if any (better info)
       }
 
       if (typeof eventArgs[eventArgs.length - 1] == 'object') {
-        eventArgs.pop(); //trigger data arg - not logged right now
+        eventArgs.pop(); // trigger data arg - not logged right now
       }
 
       if (eventArgs.length == 2) {
@@ -416,14 +412,14 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         logFilter = DEBUG.events.logFilter;
 
         // no regex for you, actions...
-        actionLoggable = logFilter.actions=="all" || (logFilter.actions.indexOf(action) > -1);
+        actionLoggable = logFilter.actions == 'all' || (logFilter.actions.indexOf(action) > -1);
         // event name filter allow wildcards or regex...
         toRegExp = function(expr) {
-          return expr.test ? expr : new RegExp("^" + expr.replace(/\*/g, ".*") + "$");
+          return expr.test ? expr : new RegExp('^' + expr.replace(/\*/g, '.*') + '$');
         };
         nameLoggable =
-          logFilter.eventNames=="all" ||
-          logFilter.eventNames.some(function(e) {return toRegExp(e).test(name)});
+          logFilter.eventNames == 'all' ||
+          logFilter.eventNames.some(function(e) {return toRegExp(e).test(name);});
 
         if (actionLoggable && nameLoggable) {
           console.info(
@@ -431,7 +427,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
             action,
             '[' + name + ']',
             elemToString(elem),
-            component.constructor.describe.split(' ').slice(0,3).join(' ') //two mixins only
+            component.constructor.describe.split(' ').slice(0,3).join(' ') // two mixins only
           );
         }
       }
@@ -439,13 +435,13 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
     function withLogging() {
       this.before('trigger', function() {
-        log('trigger', this, util.toArray(arguments));
+        log('trigger', this, utils.toArray(arguments));
       });
       this.before('on', function() {
-        log('on', this, util.toArray(arguments));
+        log('on', this, utils.toArray(arguments));
       });
-      this.before('off', function(eventArgs) {
-        log('off', this, util.toArray(arguments));
+      this.before('off', function() {
+        log('off', this, utils.toArray(arguments));
       });
     }
 
@@ -463,11 +459,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-"use strict";
-
-!(__WEBPACK_AMD_DEFINE_ARRAY__ = [
-    __webpack_require__(6)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function (util) {
+!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+    'use strict';
 
     function parseEventArgs(instance, args) {
       var element, type, callback;
@@ -526,7 +519,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           this.attachedTo.push(instance.node);
 
           return instanceInfo;
-        }
+        };
 
         this.removeInstance = function(instance) {
           delete this.instances[instance.identity];
@@ -537,11 +530,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
             //if I hold no more instances remove me from registry
             registry.removeComponentInfo(this);
           }
-        }
+        };
 
         this.isAttachedTo = function(node) {
           return this.attachedTo.indexOf(node) > -1;
-        }
+        };
       }
 
       function InstanceInfo(instance) {
@@ -559,7 +552,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
               this.events.splice(i, 1);
             }
           }
-        }
+        };
       }
 
       this.addInstance = function(instance) {
@@ -590,7 +583,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       this.removeComponentInfo = function(componentInfo) {
         var index = this.components.indexOf(componentInfo);
-        (index > -1)  && this.components.splice(index, 1);
+        (index > -1) && this.components.splice(index, 1);
       };
 
       this.findComponentInfo = function(which) {
@@ -606,18 +599,18 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       };
 
       this.findInstanceInfo = function(instance) {
-          return this.allInstances[instance.identity] || null;
+        return this.allInstances[instance.identity] || null;
       };
 
       this.findInstanceInfoByNode = function(node) {
-          var result = [];
-          Object.keys(this.allInstances).forEach(function(k) {
-            var thisInstanceInfo = this.allInstances[k];
-            if(thisInstanceInfo.instance.node === node) {
-              result.push(thisInstanceInfo);
-            }
-          }, this);
-          return result;
+        var result = [];
+        Object.keys(this.allInstances).forEach(function(k) {
+          var thisInstanceInfo = this.allInstances[k];
+          if (thisInstanceInfo.instance.node === node) {
+            result.push(thisInstanceInfo);
+          }
+        }, this);
+        return result;
       };
 
       this.on = function(componentOn) {
@@ -638,7 +631,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         }
       };
 
-      this.off = function(el, type, callback) {
+      this.off = function(/*el, type, callback*/) {
         var event = parseEventArgs(this, arguments),
             instance = registry.findInstanceInfo(this);
 
@@ -654,8 +647,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         }
       };
 
-      //debug tools may want to add advice to trigger
-      registry.trigger = new Function;
+      // debug tools may want to add advice to trigger
+      registry.trigger = function() {};
 
       this.teardown = function() {
         registry.removeInstance(this);
@@ -670,7 +663,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         this.after('off', registry.off);
         //debug tools may want to add advice to trigger
         window.DEBUG && (false).enabled && this.after('trigger', registry.trigger);
-        this.after('teardown', {obj:registry, fnName:'teardown'});
+        this.after('teardown', {obj: registry, fnName: 'teardown'});
       };
 
     }
@@ -689,9 +682,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-"use strict";
-
-!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function () {
+!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+    'use strict';
 
     var arry = [];
     var DEFAULT_INTERVAL = 100;
@@ -773,14 +765,14 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         if (base) {
           Object.keys(extra || {}).forEach(function(key) {
             if (base[key] && protect) {
-              throw Error("utils.push attempted to overwrite '" + key + "' while running in protected mode");
+              throw new Error('utils.push attempted to overwrite "' + key + '" while running in protected mode');
             }
 
-            if (typeof base[key] == "object" && typeof extra[key] == "object") {
-              //recurse
+            if (typeof base[key] == 'object' && typeof extra[key] == 'object') {
+              // recurse
               this.push(base[key], extra[key]);
             } else {
-              //no protect, so extra wins
+              // no protect, so extra wins
               base[key] = extra[key];
             }
           }, this);
@@ -793,9 +785,9 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return Object.keys(obj).indexOf(property) > -1;
       },
 
-      //build a function from other function(s)
-      //util.compose(a,b,c) -> a(b(c()));
-      //implementation lifted from underscore.js (c) 2009-2012 Jeremy Ashkenas
+      // build a function from other function(s)
+      // utils.compose(a,b,c) -> a(b(c()));
+      // implementation lifted from underscore.js (c) 2009-2012 Jeremy Ashkenas
       compose: function() {
         var funcs = arguments;
 
@@ -920,238 +912,250 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 /* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
-var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;!(__WEBPACK_AMD_DEFINE_ARRAY__ = [
+var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// ==========================================
+// Copyright 2013 Twitter, Inc
+// Licensed under The MIT License
+// http://opensource.org/licenses/MIT
+// ==========================================
+
+!(__WEBPACK_AMD_DEFINE_ARRAY__ = [
     __webpack_require__(6),
     __webpack_require__(5),
     __webpack_require__(8)
   ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(utils, registry, debug) {
-  //common mixin allocates basic functionality - used by all component prototypes
-  //callback context is bound to component
-  var componentId = 0;
+    'use strict';
 
-  function teardownInstance(instanceInfo){
-    instanceInfo.events.slice().forEach(function(event) {
-      var args = [event.type];
+    // common mixin allocates basic functionality - used by all component prototypes
+    // callback context is bound to component
+    var componentId = 0;
 
-      event.element && args.unshift(event.element);
-      (typeof event.callback == 'function') && args.push(event.callback);
+    function teardownInstance(instanceInfo){
+      instanceInfo.events.slice().forEach(function(event) {
+        var args = [event.type];
 
-      this.off.apply(this, args);
-    }, instanceInfo.instance);
-  }
+        event.element && args.unshift(event.element);
+        (typeof event.callback == 'function') && args.push(event.callback);
 
-  function checkSerializable(type, data) {
-    try {
-      window.postMessage(data, '*');
-    } catch(e) {
-      console.log('unserializable data for event',type,':',data);
-      throw new Error(
-        ["The event", type, "on component", this.toString(), "was triggered with non-serializable data"].join(" ")
-      );
+        this.off.apply(this, args);
+      }, instanceInfo.instance);
     }
-  }
 
-  function withBase() {
-
-    // delegate trigger, bind and unbind to an element
-    // if $element not supplied, use component's node
-    // other arguments are passed on
-    // event can be either a string specifying the type
-    // of the event, or a hash specifying both the type
-    // and a default function to be called.
-    this.trigger = function() {
-      var $element, type, data, event, defaultFn;
-      var lastIndex = arguments.length - 1, lastArg = arguments[lastIndex];
-
-      if (typeof lastArg != "string" && !(lastArg && lastArg.defaultBehavior)) {
-        lastIndex--;
-        data = lastArg;
-      }
-
-      if (lastIndex == 1) {
-        $element = $(arguments[0]);
-        event = arguments[1];
-      } else {
-        $element = this.$node;
-        event = arguments[0];
-      }
-
-      if (event.defaultBehavior) {
-        defaultFn = event.defaultBehavior;
-        event = $.Event(event.type);
-      }
-
-      type = event.type || event;
-
-      if (debug.enabled && window.postMessage) {
-        checkSerializable.call(this, type, data);
-      }
-
-      if (typeof this.attr.eventData === 'object') {
-        data = $.extend(true, {}, this.attr.eventData, data);
-      }
-
-      $element.trigger((event || type), data);
-
-      if (defaultFn && !event.isDefaultPrevented()) {
-        (this[defaultFn] || defaultFn).call(this);
-      }
-
-      return $element;
-    };
-
-    this.on = function() {
-      var $element, type, callback, originalCb;
-      var lastIndex = arguments.length - 1, origin = arguments[lastIndex];
-
-      if (typeof origin == "object") {
-        //delegate callback
-        originalCb = utils.delegate(
-          this.resolveDelegateRules(origin)
+    function checkSerializable(type, data) {
+      try {
+        window.postMessage(data, '*');
+      } catch(e) {
+        console.log('unserializable data for event',type,':',data);
+        throw new Error(
+          ['The event', type, 'on component', this.toString(), 'was triggered with non-serializable data'].join(' ')
         );
-      } else {
-        originalCb = origin;
       }
-
-      if (lastIndex == 2) {
-        $element = $(arguments[0]);
-        type = arguments[1];
-      } else {
-        $element = this.$node;
-        type = arguments[0];
-      }
-
-      if (typeof originalCb != 'function' && typeof originalCb != 'object') {
-        throw new Error("Unable to bind to '" + type + "' because the given callback is not a function or an object");
-      }
-
-      callback = originalCb.bind(this);
-      callback.target = originalCb;
-
-      // if the original callback is already branded by jQuery's guid, copy it to the context-bound version
-      if (originalCb.guid) {
-        callback.guid = originalCb.guid;
-      }
-
-      $element.on(type, callback);
-
-      // get jquery's guid from our bound fn, so unbinding will work
-      originalCb.guid = callback.guid;
-
-      return callback;
-    };
-
-    this.off = function() {
-      var $element, type, callback;
-      var lastIndex = arguments.length - 1;
-
-      if (typeof arguments[lastIndex] == "function") {
-        callback = arguments[lastIndex];
-        lastIndex -= 1;
-      }
-
-      if (lastIndex == 1) {
-        $element = $(arguments[0]);
-        type = arguments[1];
-      } else {
-        $element = this.$node;
-        type = arguments[0];
-      }
-
-      return $element.off(type, callback);
-    };
-
-    this.resolveDelegateRules = function(ruleInfo) {
-      var rules = {};
-
-      Object.keys(ruleInfo).forEach(function(r) {
-        if (!(r in this.attr)) {
-          throw new Error('Component "' + this.toString() + '" wants to listen on "' + r + '" but no such attribute was defined.');
-        }
-        rules[this.attr[r]] = ruleInfo[r];
-      }, this);
-
-      return rules;
-    };
-
-    this.defaultAttrs = function(defaults) {
-      utils.push(this.defaults, defaults, true) || (this.defaults = defaults);
-    };
-
-    this.select = function(attributeKey) {
-      return this.$node.find(this.attr[attributeKey]);
-    };
-
-    this.initialize = function(node, attrs) {
-      attrs = attrs || {};
-      this.identity = componentId++;
-
-      if (!node) {
-        throw new Error("Component needs a node");
-      }
-
-      if (node.jquery) {
-        this.node = node[0];
-        this.$node = node;
-      } else {
-        this.node = node;
-        this.$node = $(node);
-      }
-
-      //merge defaults with supplied options
-      //put options in attr.__proto__ to avoid merge overhead
-      var attr = Object.create(attrs);
-      for (var key in this.defaults) {
-        if (!attrs.hasOwnProperty(key)) {
-          attr[key] = this.defaults[key];
-        }
-      }
-
-      this.attr = attr;
-
-      Object.keys(this.defaults || {}).forEach(function(key) {
-        if (this.defaults[key] === null && this.attr[key] === null) {
-          throw new Error('Required attribute "' + key + '" not specified in attachTo for component "' + this.toString() + '".');
-        }
-      }, this);
-
-      return this;
     }
 
-    this.teardown = function() {
-      teardownInstance(registry.findInstanceInfo(this));
-    };
-  }
+    function withBase() {
 
-  return withBase;
-}.apply(null, __WEBPACK_AMD_DEFINE_ARRAY__)), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+      // delegate trigger, bind and unbind to an element
+      // if $element not supplied, use component's node
+      // other arguments are passed on
+      // event can be either a string specifying the type
+      // of the event, or a hash specifying both the type
+      // and a default function to be called.
+      this.trigger = function() {
+        var $element, type, data, event, defaultFn;
+        var lastIndex = arguments.length - 1, lastArg = arguments[lastIndex];
+
+        if (typeof lastArg != 'string' && !(lastArg && lastArg.defaultBehavior)) {
+          lastIndex--;
+          data = lastArg;
+        }
+
+        if (lastIndex == 1) {
+          $element = $(arguments[0]);
+          event = arguments[1];
+        } else {
+          $element = this.$node;
+          event = arguments[0];
+        }
+
+        if (event.defaultBehavior) {
+          defaultFn = event.defaultBehavior;
+          event = $.Event(event.type);
+        }
+
+        type = event.type || event;
+
+        if (debug.enabled && window.postMessage) {
+          checkSerializable.call(this, type, data);
+        }
+
+        if (typeof this.attr.eventData === 'object') {
+          data = $.extend(true, {}, this.attr.eventData, data);
+        }
+
+        $element.trigger((event || type), data);
+
+        if (defaultFn && !event.isDefaultPrevented()) {
+          (this[defaultFn] || defaultFn).call(this);
+        }
+
+        return $element;
+      };
+
+      this.on = function() {
+        var $element, type, callback, originalCb;
+        var lastIndex = arguments.length - 1, origin = arguments[lastIndex];
+
+        if (typeof origin == 'object') {
+          //delegate callback
+          originalCb = utils.delegate(
+            this.resolveDelegateRules(origin)
+          );
+        } else {
+          originalCb = origin;
+        }
+
+        if (lastIndex == 2) {
+          $element = $(arguments[0]);
+          type = arguments[1];
+        } else {
+          $element = this.$node;
+          type = arguments[0];
+        }
+
+        if (typeof originalCb != 'function' && typeof originalCb != 'object') {
+          throw new Error('Unable to bind to "' + type + '" because the given callback is not a function or an object');
+        }
+
+        callback = originalCb.bind(this);
+        callback.target = originalCb;
+
+        // if the original callback is already branded by jQuery's guid, copy it to the context-bound version
+        if (originalCb.guid) {
+          callback.guid = originalCb.guid;
+        }
+
+        $element.on(type, callback);
+
+        // get jquery's guid from our bound fn, so unbinding will work
+        originalCb.guid = callback.guid;
+
+        return callback;
+      };
+
+      this.off = function() {
+        var $element, type, callback;
+        var lastIndex = arguments.length - 1;
+
+        if (typeof arguments[lastIndex] == 'function') {
+          callback = arguments[lastIndex];
+          lastIndex -= 1;
+        }
+
+        if (lastIndex == 1) {
+          $element = $(arguments[0]);
+          type = arguments[1];
+        } else {
+          $element = this.$node;
+          type = arguments[0];
+        }
+
+        return $element.off(type, callback);
+      };
+
+      this.resolveDelegateRules = function(ruleInfo) {
+        var rules = {};
+
+        Object.keys(ruleInfo).forEach(function(r) {
+          if (!(r in this.attr)) {
+            throw new Error('Component "' + this.toString() + '" wants to listen on "' + r + '" but no such attribute was defined.');
+          }
+          rules[this.attr[r]] = ruleInfo[r];
+        }, this);
+
+        return rules;
+      };
+
+      this.defaultAttrs = function(defaults) {
+        utils.push(this.defaults, defaults, true) || (this.defaults = defaults);
+      };
+
+      this.select = function(attributeKey) {
+        return this.$node.find(this.attr[attributeKey]);
+      };
+
+      this.initialize = function(node, attrs) {
+        attrs || (attrs = {});
+        //only assign identity if there isn't one (initialize can be called multiple times)
+        this.identity || (this.identity = componentId++);
+
+        if (!node) {
+          throw new Error('Component needs a node');
+        }
+
+        if (node.jquery) {
+          this.node = node[0];
+          this.$node = node;
+        } else {
+          this.node = node;
+          this.$node = $(node);
+        }
+
+        // merge defaults with supplied options
+        // put options in attr.__proto__ to avoid merge overhead
+        var attr = Object.create(attrs);
+        for (var key in this.defaults) {
+          if (!attrs.hasOwnProperty(key)) {
+            attr[key] = this.defaults[key];
+          }
+        }
+
+        this.attr = attr;
+
+        Object.keys(this.defaults || {}).forEach(function(key) {
+          if (this.defaults[key] === null && this.attr[key] === null) {
+            throw new Error('Required attribute "' + key + '" not specified in attachTo for component "' + this.toString() + '".');
+          }
+        }, this);
+
+        return this;
+      };
+
+      this.teardown = function() {
+        teardownInstance(registry.findInstanceInfo(this));
+      };
+    }
+
+    return withBase;
+  }.apply(null, __WEBPACK_AMD_DEFINE_ARRAY__)), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 
 
 /***/ },
 /* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
-var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
+var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// ==========================================
+// Copyright 2013 Twitter, Inc
+// Licensed under The MIT License
+// http://opensource.org/licenses/MIT
+// ==========================================
 
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
-
-    var logFilter;
+    'use strict';
 
     //******************************************************************************************
     // Search object model
     //******************************************************************************************
 
     function traverse(util, searchTerm, options) {
-      var options = options || {};
+      options = options || {};
       var obj = options.obj || window;
-      var path = options.path || ((obj==window) ? "window" : "");
+      var path = options.path || ((obj==window) ? 'window' : '');
       var props = Object.keys(obj);
       props.forEach(function(prop) {
         if ((tests[util] || util)(searchTerm, obj, prop)){
-          console.log([path, ".", prop].join(""), "->",["(", typeof obj[prop], ")"].join(""), obj[prop]);
+          console.log([path, '.', prop].join(''), '->', ['(', typeof obj[prop], ')'].join(''), obj[prop]);
         }
-        if(Object.prototype.toString.call(obj[prop])=="[object Object]" && (obj[prop] != obj) && path.split(".").indexOf(prop) == -1) {
-          traverse(util, searchTerm, {obj: obj[prop], path: [path,prop].join(".")});
+        if (Object.prototype.toString.call(obj[prop]) == '[object Object]' && (obj[prop] != obj) && path.split('.').indexOf(prop) == -1) {
+          traverse(util, searchTerm, {obj: obj[prop], path: [path,prop].join('.')});
         }
       });
     }
@@ -1160,24 +1164,24 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
       if (!expected || typeof searchTerm == expected) {
         traverse(util, searchTerm, options);
       } else {
-        console.error([searchTerm, 'must be', expected].join(' '))
+        console.error([searchTerm, 'must be', expected].join(' '));
       }
     }
 
     var tests = {
-      'name': function(searchTerm, obj, prop) {return searchTerm == prop},
-      'nameContains': function(searchTerm, obj, prop) {return prop.indexOf(searchTerm)>-1},
-      'type': function(searchTerm, obj, prop) {return obj[prop] instanceof searchTerm},
-      'value': function(searchTerm, obj, prop) {return obj[prop] === searchTerm},
-      'valueCoerced': function(searchTerm, obj, prop) {return obj[prop] == searchTerm}
-    }
+      'name': function(searchTerm, obj, prop) {return searchTerm == prop;},
+      'nameContains': function(searchTerm, obj, prop) {return prop.indexOf(searchTerm) > -1;},
+      'type': function(searchTerm, obj, prop) {return obj[prop] instanceof searchTerm;},
+      'value': function(searchTerm, obj, prop) {return obj[prop] === searchTerm;},
+      'valueCoerced': function(searchTerm, obj, prop) {return obj[prop] == searchTerm;}
+    };
 
-    function byName(searchTerm, options) {search('name', 'string', searchTerm, options);};
-    function byNameContains(searchTerm, options) {search('nameContains', 'string', searchTerm, options);};
-    function byType(searchTerm, options) {search('type', 'function', searchTerm, options);};
-    function byValue(searchTerm, options) {search('value', null, searchTerm, options);};
-    function byValueCoerced(searchTerm, options) {search('valueCoerced', null, searchTerm, options);};
-    function custom(fn, options) {traverse(fn, null, options);};
+    function byName(searchTerm, options) {search('name', 'string', searchTerm, options);}
+    function byNameContains(searchTerm, options) {search('nameContains', 'string', searchTerm, options);}
+    function byType(searchTerm, options) {search('type', 'function', searchTerm, options);}
+    function byValue(searchTerm, options) {search('value', null, searchTerm, options);}
+    function byValueCoerced(searchTerm, options) {search('valueCoerced', null, searchTerm, options);}
+    function custom(fn, options) {traverse(fn, null, options);}
 
     //******************************************************************************************
     // Event logging
@@ -1231,7 +1235,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
         eventNames: (window.localStorage && localStorage.getItem('logFilter_eventNames')) || defaultEventNamesFilter,
         actions: (window.localStorage && localStorage.getItem('logFilter_actions')) || defaultActionsFilter
       };
-      //reconstitute arrays
+
+      // reconstitute arrays
       Object.keys(result).forEach(function(k) {
         var thisProp = result[k];
         if (typeof thisProp == 'string' && thisProp !== ALL) {
@@ -1279,7 +1284,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
       }
     };
   }.apply(null, __WEBPACK_AMD_DEFINE_ARRAY__)), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-
 
 
 /***/ }
