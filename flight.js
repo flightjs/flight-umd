@@ -1,4 +1,4 @@
-/*! Flight v1.0.3 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.4 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -178,7 +178,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
   ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, utils, compose, registry) {
 
     var functionNameRegEx = /function (.*?)\s?\(/;
-    var spaceCommaRegEx = /\s\,/g;
 
     function teardownInstance(instanceInfo){
       instanceInfo.events.slice().forEach(function(event) {
@@ -246,7 +245,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         type = event.type || event;
 
-        if (window.DEBUG && window.postMessage) {
+        if (window.DEBUG && window.DEBUG.enabled && window.postMessage) {
           checkSerializable.call(this, type, data);
         }
 
@@ -316,15 +315,12 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       this.resolveDelegateRules = function(ruleInfo) {
         var rules = {};
 
-        Object.keys(ruleInfo).forEach(
-          function(r) {
-            if (!this.attr.hasOwnProperty(r)) {
-              throw new Error('Component "' + this.describe + '" wants to listen on "' + r + '" but no such attribute was defined.');
-            }
-            rules[this.attr[r]] = ruleInfo[r];
-          },
-          this
-        );
+        Object.keys(ruleInfo).forEach(function(r) {
+          if (!r in this.attr) {
+            throw new Error('Component "' + this.describe + '" wants to listen on "' + r + '" but no such attribute was defined.');
+          }
+          rules[this.attr[r]] = ruleInfo[r];
+        }, this);
 
         return rules;
       };
@@ -368,17 +364,15 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           } else {
             return mixin.name;
           }
-        }).join(', ').replace(spaceCommaRegEx,'');//weed out no-named mixins
-
+        }).filter(Boolean).join(', ');
         return prettyPrintMixins;
       };
-
 
       Component.describe = Component.toString();
 
       //'options' is optional hash to be merged with 'defaults' in the component definition
       function Component(node, options) {
-        var fnCache = {}, uuid = 0;
+        options = options || {};
 
         if (!node) {
           throw new Error("Component needs a node");
@@ -394,33 +388,23 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         this.describe = this.constructor.describe;
 
-        this.bind = function(func) {
-          var bound;
-
-          if (func.uuid && (bound = fnCache[func.uuid])) {
-            return bound;
-          }
-
-          var bindArgs = utils.toArray(arguments, 1);
-          bindArgs.unshift(this); //prepend context
-
-          bound = func.bind.apply(func, bindArgs);
-          bound.target = func;
-          func.uuid = uuid++;
-          fnCache[func.uuid] = bound;
-
-          return bound;
-        };
-
         //merge defaults with supplied options
-        this.attr = utils.merge(this.defaults, options);
-        this.defaults && Object.keys(this.defaults).forEach(function(key) {
+        //put options in attr.__proto__ to avoid merge overhead
+        var attr = Object.create(options);
+        for (var key in this.defaults) {
+          if (!options.hasOwnProperty(key)) {
+            attr[key] = this.defaults[key];
+          }
+        }
+        this.attr = attr;
+
+        Object.keys(this.defaults || {}).forEach(function(key) {
           if (this.defaults[key] === null && this.attr[key] === null) {
             throw new Error('Required attribute "' + key + '" not specified in attachTo for component "' + this.describe + '".');
           }
         }, this);
 
-        this.initialize.call(this, options || {});
+        this.initialize.call(this, options);
 
         this.trigger('componentInitialized');
       }
@@ -585,7 +569,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         name = eventArgs[0];
       }
 
-      if (window.DEBUG) {
+      if (window.DEBUG && window.DEBUG.enabled) {
         logFilter = DEBUG.events.logFilter;
 
         // no regex for you, actions...
