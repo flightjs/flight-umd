@@ -1,4 +1,4 @@
-/*! Flight v1.0.7 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.8 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -722,7 +722,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           var indexOfNode = this.attachedTo.indexOf(instance.node);
           (indexOfNode > -1) && this.attachedTo.splice(indexOfNode, 1);
 
-          if (!this.instances.length) {
+          if (!Object.keys(this.instances).length) {
             //if I hold no more instances remove me from registry
             registry.removeComponentInfo(this);
           }
@@ -834,12 +834,17 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         if (instance) {
           instance.removeBind(event);
         }
+
+        //remove from global event registry
+        for (var i = 0, e; e = registry.events[i]; i++) {
+          if (matchEvent(e, event)) {
+            registry.events.splice(i, 1);
+          }
+        }
       };
 
       //debug tools may want to add advice to trigger
-      if (window.DEBUG && (false).enabled) {
-        registry.trigger = new Function;
-      }
+      registry.trigger = new Function;
 
       this.teardown = function() {
         registry.removeInstance(this);
