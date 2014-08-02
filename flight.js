@@ -1,4 +1,4 @@
-/*! Flight v1.0.1 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.2 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -177,6 +177,9 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     __webpack_require__(5)
   ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, utils, compose, registry) {
 
+    var functionNameRegEx = /function (.*?)\s?\(/;
+    var spaceCommaRegEx = /\s\,/g;
+
     function teardownInstance(instanceInfo){
       instanceInfo.events.slice().forEach(function(event) {
         var args = [event.type];
@@ -203,6 +206,17 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       });
     }
 
+    function checkSerializable(type, data) {
+      try {
+        window.postMessage(data, '*');
+      } catch(e) {
+        console.log('unserializable data for event',type,':',data);
+        throw new Error(
+          ["The event", type, "on component", this.describe, "was triggered with non-serializable data"].join(" ")
+        );
+      }
+    }
+
     //common mixin allocates basic functionality - used by all component prototypes
     //callback context is bound to component
     function withBaseComponent() {
@@ -210,33 +224,43 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       // delegate trigger, bind and unbind to an element
       // if $element not supplied, use component's node
       // other arguments are passed on
+      // event can be either a string specifying the type
+      // of the event, or a hash specifying both the type
+      // and a default function to be called.
       this.trigger = function() {
-        var $element, type, data;
+        var $element, type, data, event, defaultFn;
         var args = utils.toArray(arguments);
+        var lastArg = args[args.length - 1];
 
-        if (typeof args[args.length - 1] != "string") {
+        if (typeof lastArg != "string" && !(lastArg && lastArg.defaultBehavior)) {
           data = args.pop();
         }
 
         $element = (args.length == 2) ? $(args.shift()) : this.$node;
-        type = args[0];
+        event = args[0];
+
+        if (event.defaultBehavior) {
+          defaultFn = event.defaultBehavior;
+          event = $.Event(event.type);
+        }
+
+        type = event.type || event;
 
         if (window.DEBUG && window.postMessage) {
-          try {
-            window.postMessage(data, '*');
-          } catch(e) {
-            console.log('unserializable data for event',type,':',data);
-            throw new Error(
-              ["The event", event.type, "on component", this.describe, "was triggered with non-serializable data"].join(" ")
-            );
-          }
+          checkSerializable.call(this, type, data);
         }
 
         if (typeof this.attr.eventData === 'object') {
           data = $.extend(true, {}, this.attr.eventData, data);
         }
 
-        return $element.trigger(type, data);
+        var returnVal = $element.trigger((event || type), data);
+
+        if (defaultFn && !event.isDefaultPrevented()) {
+          (this[defaultFn] || defaultFn).call(this);
+        }
+
+        return returnVal;
       };
 
       this.on = function() {
@@ -252,19 +276,19 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           originalCb = args.pop();
         }
 
-        callback = originalCb && originalCb.bind(this);
+        $element = (args.length == 2) ? $(args.shift()) : this.$node;
+        type = args[0];
+
+        if (typeof originalCb != 'function' && typeof originalCb != 'object') {
+          throw new Error("Unable to bind to '" + type + "' because the given callback is not a function or an object");
+        }
+
+        callback = originalCb.bind(this);
         callback.target = originalCb;
 
         // if the original callback is already branded by jQuery's guid, copy it to the context-bound version
         if (originalCb.guid) {
           callback.guid = originalCb.guid;
-        }
-
-        $element = (args.length == 2) ? $(args.shift()) : this.$node;
-        type = args[0];
-
-        if (typeof callback == 'undefined') {
-          throw new Error("Unable to bind to '" + type + "' because the given callback is undefined");
         }
 
         $element.on(type, callback);
@@ -338,12 +362,12 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       Component.toString = function() {
         var prettyPrintMixins = mixins.map(function(mixin) {
           if ($.browser.msie) {
-            var m = mixin.toString().match(/function (.*?)\s?\(/);
+            var m = mixin.toString().match(functionNameRegEx);
             return (m && m[1]) ? m[1] : "";
           } else {
             return mixin.name;
           }
-        }).join(', ').replace(/\s\,/g,'');//weed out no-named mixins
+        }).join(', ').replace(spaceCommaRegEx,'');//weed out no-named mixins
 
         return prettyPrintMixins;
       };
