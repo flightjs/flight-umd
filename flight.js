@@ -1,4 +1,4 @@
-/*! Flight v1.0.6 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.7 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -836,6 +836,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         }
       };
 
+      //debug tools may want to add advice to trigger
+      if (window.DEBUG && (false).enabled) {
+        registry.trigger = new Function;
+      }
+
       this.teardown = function() {
         registry.removeInstance(this);
       };
@@ -847,6 +852,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         this.around('on', registry.on);
         this.after('off', registry.off);
+        //debug tools may want to add advice to trigger
+        window.DEBUG && (false).enabled && this.after('trigger', registry.trigger);
         this.after('teardown', {obj:registry, fnName:'teardown'});
       };
 
@@ -1151,31 +1158,63 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
     //******************************************************************************************
     // Event logging
     //******************************************************************************************
-    var logLevel = [];
-    logFilter = {actions: logLevel, eventNames: logLevel}; //no filter by default
+
+    var ALL = 'all'; //no filter
+
+    //no logging by default
+    var defaultEventNamesFilter = [];
+    var defaultActionsFilter = [];
+
+    var logFilter = retrieveLogFilter();
 
     function filterEventLogsByAction(/*actions*/) {
-      var actions = [].slice.call(arguments, 0);
+      var actions = [].slice.call(arguments);
 
-      logFilter.eventNames.length || (logFilter.eventNames = 'all');
-      logFilter.actions = actions.length ? actions : 'all';
+      logFilter.eventNames.length || (logFilter.eventNames = ALL);
+      logFilter.actions = actions.length ? actions : ALL;
+      saveLogFilter();
     }
 
     function filterEventLogsByName(/*eventNames*/) {
-      var eventNames = [].slice.call(arguments, 0);
+      var eventNames = [].slice.call(arguments);
 
-      logFilter.actions.length || (logFilter.actions = 'all');
-      logFilter.eventNames = eventNames.length ? eventNames : 'all';
+      logFilter.actions.length || (logFilter.actions = ALL);
+      logFilter.eventNames = eventNames.length ? eventNames : ALL;
+      saveLogFilter();
     }
 
     function hideAllEventLogs() {
       logFilter.actions = [];
       logFilter.eventNames = [];
+      saveLogFilter();
     }
 
     function showAllEventLogs() {
-      logFilter.actions = 'all';
-      logFilter.eventNames = 'all';
+      logFilter.actions = ALL;
+      logFilter.eventNames = ALL;
+      saveLogFilter();
+    }
+
+    function saveLogFilter() {
+      if (window.localStorage) {
+        localStorage.setItem('logFilter_eventNames', logFilter.eventNames);
+        localStorage.setItem('logFilter_actions', logFilter.actions);
+      }
+    }
+
+    function retrieveLogFilter() {
+      var result = {
+        eventNames: (window.localStorage && localStorage.getItem('logFilter_eventNames')) || defaultEventNamesFilter,
+        actions: (window.localStorage && localStorage.getItem('logFilter_actions')) || defaultActionsFilter
+      };
+      //reconstitute arrays
+      Object.keys(result).forEach(function(k) {
+        var thisProp = result[k];
+        if (typeof thisProp == 'string' && thisProp !== ALL) {
+          result[k] = thisProp.split(',');
+        }
+      });
+      return result;
     }
 
     return {
