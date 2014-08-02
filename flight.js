@@ -1,4 +1,4 @@
-/*! Flight v1.0.0 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.1 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -254,6 +254,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         callback = originalCb && originalCb.bind(this);
         callback.target = originalCb;
+
+        // if the original callback is already branded by jQuery's guid, copy it to the context-bound version
+        if (originalCb.guid) {
+          callback.guid = originalCb.guid;
+        }
 
         $element = (args.length == 2) ? $(args.shift()) : this.$node;
         type = args[0];
@@ -708,7 +713,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         };
 
         this.removeBind = function(event) {
-          for (var i=0, e; e = this.events[i]; i++) {
+          for (var i = 0, e; e = this.events[i]; i++) {
             if (matchEvent(e, event)) {
               this.events.splice(i, 1);
             }
@@ -751,7 +756,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       this.findComponentInfo = function(which) {
         var component = which.attachTo ? which : which.constructor;
 
-        for (var i=0, c; c = this.components[i]; i++) {
+        for (var i = 0, c; c = this.components[i]; i++) {
           if (c.component === component) {
             return c;
           }
@@ -955,11 +960,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         };
       },
 
-      // Can only unique arrays of homogenous primitives, e.g. an array of only strings, an array of only booleans, or an array of only numerics
+      // Can only unique arrays of homogeneous primitives, e.g. an array of only strings, an array of only booleans, or an array of only numerics
       uniqueArray: function(array) {
         var u = {}, a = [];
 
-        for(var i = 0, l = array.length; i < l; ++i) {
+        for (var i = 0, l = array.length; i < l; ++i) {
           if (u.hasOwnProperty(array[i])) {
             continue;
           }
@@ -1045,14 +1050,14 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return function(e, data) {
           var target = $(e.target), parent;
 
-          Object.keys(rules).forEach( function(selector) {
+          Object.keys(rules).forEach(function(selector) {
             if ((parent = target.closest(selector)).length) {
               data = data || {};
               data.el = parent[0];
               return rules[selector].apply(this, [e, data]);
             }
           }, this);
-        }
+        };
       }
 
     };
