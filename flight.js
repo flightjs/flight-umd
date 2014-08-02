@@ -1,4 +1,4 @@
-/*! Flight v1.1.4 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.2.0 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -94,8 +94,9 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // ==========================================
 
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [
-    __webpack_require__(3)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(compose) {
+    __webpack_require__(3),
+    __webpack_require__(6)
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(compose, utils) {
     'use strict';
 
     var advice = {
@@ -134,7 +135,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         ['before', 'after', 'around'].forEach(function(m) {
           this[m] = function(method, fn) {
 
-            compose.unlockProperty(this, method, function() {
+            utils.mutateProperty(this, method, function() {
               if (typeof this[method] == 'function') {
                 this[method] = advice[m](this[method], fn);
               } else {
@@ -262,6 +263,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         var newComponent = define(); //TODO: fix pretty print
         var newPrototype = Object.create(Component.prototype);
         newPrototype.mixedIn = [].concat(Component.prototype.mixedIn);
+        newPrototype.defaults = utils.merge(Component.prototype.defaults);
+        newPrototype.attrDef = Component.prototype.attrDef;
         compose.mixin(newPrototype, arguments);
         newComponent.prototype = newPrototype;
         newComponent.prototype.constructor = newComponent;
@@ -301,57 +304,20 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // ==========================================
 
 !(__WEBPACK_AMD_DEFINE_ARRAY__ = [
-    __webpack_require__(6),
-    __webpack_require__(8)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(utils, debug) {
+    __webpack_require__(6)
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(utils) {
     'use strict';
 
-    //enumerables are shims - getOwnPropertyDescriptor shim doesn't work
-    var canWriteProtect = debug.enabled && !utils.isEnumerable(Object, 'getOwnPropertyDescriptor');
-    //whitelist of unlockable property names
     var dontLock = ['mixedIn'];
 
-    if (canWriteProtect) {
-      //IE8 getOwnPropertyDescriptor is built-in but throws exeption on non DOM objects
-      try {
-        Object.getOwnPropertyDescriptor(Object, 'keys');
-      } catch(e) {
-        canWriteProtect = false;
-      }
-    }
-
-    function setPropertyWritability(obj, isWritable) {
-      if (!canWriteProtect) {
-        return;
-      }
-
+    function setWritability(obj, writable) {
       var props = Object.create(null);
 
-      Object.keys(obj).forEach(
-        function (key) {
-          if (dontLock.indexOf(key) < 0) {
-            var desc = Object.getOwnPropertyDescriptor(obj, key);
-            desc.writable = isWritable;
-            props[key] = desc;
-          }
+      Object.keys(obj).forEach(function (key) {
+        if (dontLock.indexOf(key) < 0) {
+          utils.propertyWritability(obj, key, writable);
         }
-      );
-
-      Object.defineProperties(obj, props);
-    }
-
-    function unlockProperty(obj, prop, op) {
-      var writable;
-
-      if (!canWriteProtect || !obj.hasOwnProperty(prop)) {
-        op.call(obj);
-        return;
-      }
-
-      writable = Object.getOwnPropertyDescriptor(obj, prop).writable;
-      Object.defineProperty(obj, prop, { writable: true });
-      op.call(obj);
-      Object.defineProperty(obj, prop, { writable: writable });
+      });
     }
 
     function mixin(base, mixins) {
@@ -359,18 +325,17 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       for (var i=0; i<mixins.length; i++) {
         if (base.mixedIn.indexOf(mixins[i]) == -1) {
-          setPropertyWritability(base, false);
+          setWritability(base, false);
           mixins[i].call(base);
           base.mixedIn.push(mixins[i]);
         }
       }
 
-      setPropertyWritability(base, true);
+      setWritability(base, true);
     }
 
     return {
-      mixin: mixin,
-      unlockProperty: unlockProperty
+      mixin: mixin
     };
 
   }.apply(null, __WEBPACK_AMD_DEFINE_ARRAY__)), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -716,11 +681,25 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 // http://opensource.org/licenses/MIT
 // ==========================================
 
-!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(8)], __WEBPACK_AMD_DEFINE_RESULT__ = (function(debug) {
     'use strict';
 
     var arry = [];
     var DEFAULT_INTERVAL = 100;
+
+    function canWriteProtect() {
+      var writeProtectSupported = debug.enabled && !utils.isEnumerable(Object, 'getOwnPropertyDescriptor');
+      if (writeProtectSupported) {
+        //IE8 getOwnPropertyDescriptor is built-in but throws exeption on non DOM objects
+        try {
+          Object.getOwnPropertyDescriptor(Object, 'keys');
+        } catch(e) {
+         return false;
+        }
+      }
+
+      return writeProtectSupported;
+    }
 
     var utils = {
 
@@ -756,13 +735,13 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       merge: function(/*obj1, obj2,....deepCopy*/) {
         // unpacking arguments by hand benchmarked faster
         var l = arguments.length,
-            i = 0,
             args = new Array(l + 1);
-        for (; i < l; i++) args[i + 1] = arguments[i];
 
         if (l === 0) {
           return {};
         }
+
+        for (var i=0; i < l; i++) args[i + 1] = arguments[i];
 
         //start with empty object so a copy is created
         args[0] = {};
@@ -962,6 +941,29 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
           return result;
         };
+      },
+
+      propertyWritability: function(obj, prop, writable) {
+        if (canWriteProtect() && obj.hasOwnProperty(prop)) {
+          Object.defineProperty(obj, prop, { writable: writable });
+        }
+      },
+
+      // Property locking/unlocking
+      mutateProperty: function(obj, prop, op) {
+        var writable;
+
+        if (!canWriteProtect() || !obj.hasOwnProperty(prop)) {
+          op.call(obj);
+          return;
+        }
+
+        writable = Object.getOwnPropertyDescriptor(obj, prop).writable;
+
+        Object.defineProperty(obj, prop, { writable: true });
+        op.call(obj);
+        Object.defineProperty(obj, prop, { writable: writable });
+
       }
 
     };
@@ -1011,6 +1013,57 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           ['The event', type, 'on component', this.toString(), 'was triggered with non-serializable data'].join(' ')
         );
       }
+    }
+
+    function initAttributes(attrs) {
+      var definedKeys = [], incomingKeys;
+
+      this.attr = new this.attrDef;
+
+      if (debug.enabled && window.console) {
+        for (var key in this.attrDef.prototype) definedKeys.push(key);
+        incomingKeys = Object.keys(attrs);
+
+        for (var i = incomingKeys.length - 1; i >= 0; i--) {
+          if (definedKeys.indexOf(incomingKeys[i]) == -1) {
+            console.warn('Passed unused attributes including "' + incomingKeys[i] +
+                         '" to component "' + this.toString() + '".');
+            break;
+          }
+        }
+      }
+
+      for (var key in this.attrDef.prototype) {
+        if (typeof attrs[key]  == 'undefined') {
+          if (this.attr[key] == null) {
+            throw new Error('Required attribute "' + key +
+                            '" not specified in attachTo for component "' + this.toString() + '".');
+          }
+        } else {
+          this.attr[key] = attrs[key];
+        }
+      }
+    }
+
+    function initDeprecatedAttributes(attrs) {
+      // merge defaults with supplied options
+      // put options in attr.__proto__ to avoid merge overhead
+      var attr = Object.create(attrs);
+
+      for (var key in this.defaults) {
+        if (!attrs.hasOwnProperty(key)) {
+          attr[key] = this.defaults[key];
+        }
+      }
+
+      this.attr = attr;
+
+      Object.keys(this.defaults || {}).forEach(function(key) {
+        if (this.defaults[key] === null && this.attr[key] === null) {
+          throw new Error('Required attribute "' + key +
+                          '" not specified in attachTo for component "' + this.toString() + '".');
+        }
+      }, this);
     }
 
     function proxyEventTo(targetEvent) {
@@ -1068,6 +1121,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return $element;
       };
 
+
       this.on = function() {
         var $element, type, callback, originalCb;
         var lastIndex = arguments.length - 1, origin = arguments[lastIndex];
@@ -1092,7 +1146,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         }
 
         if (typeof originalCb != 'function' && typeof originalCb != 'object') {
-          throw new Error('Unable to bind to "' + type + '" because the given callback is not a function or an object');
+          throw new Error('Unable to bind to "' + type +
+                          '" because the given callback is not a function or an object');
         }
 
         callback = originalCb.bind(this);
@@ -1154,17 +1209,35 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return rules;
       };
 
-      this.defaultAttrs = function(defaults) {
-        utils.push(this.defaults, defaults, true) || (this.defaults = defaults);
-      };
-
       this.select = function(attributeKey) {
         return this.$node.find(this.attr[attributeKey]);
       };
 
+      // New-style attributes
+
+      this.attributes = function(attrs) {
+
+        var Attributes = function() {};
+
+        if (this.attrDef) {
+          Attributes.prototype = new this.attrDef;
+        }
+
+        for (var name in attrs) {
+          Attributes.prototype[name] = attrs[name];
+        }
+
+        this.attrDef = Attributes;
+      };
+
+      // Deprecated attributes
+
+      this.defaultAttrs = function(defaults) {
+        utils.push(this.defaults, defaults, true) || (this.defaults = defaults);
+      };
+
       this.initialize = function(node, attrs) {
-        attrs || (attrs = {});
-        //only assign identity if there isn't one (initialize can be called multiple times)
+        attrs = attrs || {};
         this.identity || (this.identity = componentId++);
 
         if (!node) {
@@ -1179,22 +1252,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           this.$node = $(node);
         }
 
-        // merge defaults with supplied options
-        // put options in attr.__proto__ to avoid merge overhead
-        var attr = Object.create(attrs);
-        for (var key in this.defaults) {
-          if (!attrs.hasOwnProperty(key)) {
-            attr[key] = this.defaults[key];
-          }
+        if (this.attrDef) {
+          initAttributes.call(this, attrs);
+        } else {
+          initDeprecatedAttributes.call(this, attrs);
         }
-
-        this.attr = attr;
-
-        Object.keys(this.defaults || {}).forEach(function(key) {
-          if (this.defaults[key] === null && this.attr[key] === null) {
-            throw new Error('Required attribute "' + key + '" not specified in attachTo for component "' + this.toString() + '".');
-          }
-        }, this);
 
         return this;
       };
