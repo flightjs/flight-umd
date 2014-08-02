@@ -1,4 +1,4 @@
-/*! Flight v1.0.4 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.5 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -102,37 +102,31 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     var advice = {
 
       around: function(base, wrapped) {
-        return function() {
-          var args = util.toArray(arguments);
-          return wrapped.apply(this, [base.bind(this)].concat(args));
+        return function composedAround() {
+          // unpacking arguments by hand benchmarked faster
+          var i = 0, l = arguments.length, args = new Array(l + 1);
+          args[0] = base.bind(this);
+          for (; i < l; i++) args[i + 1] = arguments[i];
+
+          return wrapped.apply(this, args);
         }
       },
 
       before: function(base, before) {
-        return this.around(base, function() {
-          var args = util.toArray(arguments),
-              orig = args.shift(),
-              beforeFn;
-
-          beforeFn = (typeof before == 'function') ? before : before.obj[before.fnName];
-          beforeFn.apply(this, args);
-          return (orig).apply(this, args);
-        });
+        var beforeFn = (typeof before == 'function') ? before : before.obj[before.fnName];
+        return function composedBefore() {
+          beforeFn.apply(this, arguments);
+          return base.apply(this, arguments);
+        }
       },
 
       after: function(base, after) {
-        return this.around(base, function() {
-          var args = util.toArray(arguments),
-              orig = args.shift(),
-              afterFn;
-
-          // this is a separate statement for debugging purposes.
-          var res = (orig.unbound || orig).apply(this, args);
-
-          afterFn = (typeof after == 'function') ? after : after.obj[after.fnName];
-          afterFn.apply(this, args);
+        var afterFn = (typeof after == 'function') ? after : after.obj[after.fnName];
+        return function composedAfter() {
+          var res = (base.unbound || base).apply(this, arguments);
+          afterFn.apply(this, arguments);
           return res;
-        });
+        }
       },
 
       // a mixin that allows other mixins to augment existing functions by adding additional
@@ -178,6 +172,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
   ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, utils, compose, registry) {
 
     var functionNameRegEx = /function (.*?)\s?\(/;
+    var componentId = 0;
 
     function teardownInstance(instanceInfo){
       instanceInfo.events.slice().forEach(function(event) {
@@ -192,7 +187,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
 
     function teardown() {
-      this.trigger("componentTearDown");
       teardownInstance(registry.findInstanceInfo(this));
     }
 
@@ -211,7 +205,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       } catch(e) {
         console.log('unserializable data for event',type,':',data);
         throw new Error(
-          ["The event", type, "on component", this.describe, "was triggered with non-serializable data"].join(" ")
+          ["The event", type, "on component", this.toString(), "was triggered with non-serializable data"].join(" ")
         );
       }
     }
@@ -228,15 +222,20 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       // and a default function to be called.
       this.trigger = function() {
         var $element, type, data, event, defaultFn;
-        var args = utils.toArray(arguments);
-        var lastArg = args[args.length - 1];
+        var lastIndex = arguments.length - 1, lastArg = arguments[lastIndex];
 
         if (typeof lastArg != "string" && !(lastArg && lastArg.defaultBehavior)) {
-          data = args.pop();
+          lastIndex--;
+          data = lastArg;
         }
 
-        $element = (args.length == 2) ? $(args.shift()) : this.$node;
-        event = args[0];
+        if (lastIndex == 1) {
+          $element = $(arguments[0]);
+          event = arguments[1];
+        } else {
+          $element = this.$node;
+          event = arguments[0];
+        }
 
         if (event.defaultBehavior) {
           defaultFn = event.defaultBehavior;
@@ -264,19 +263,24 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       this.on = function() {
         var $element, type, callback, originalCb;
-        var args = utils.toArray(arguments);
+        var lastIndex = arguments.length - 1, origin = arguments[lastIndex];
 
-        if (typeof args[args.length - 1] == "object") {
+        if (typeof origin == "object") {
           //delegate callback
           originalCb = utils.delegate(
-            this.resolveDelegateRules(args.pop())
+            this.resolveDelegateRules(origin)
           );
         } else {
-          originalCb = args.pop();
+          originalCb = origin;
         }
 
-        $element = (args.length == 2) ? $(args.shift()) : this.$node;
-        type = args[0];
+        if (lastIndex == 2) {
+          $element = $(arguments[0]);
+          type = arguments[1];
+        } else {
+          $element = this.$node;
+          type = arguments[0];
+        }
 
         if (typeof originalCb != 'function' && typeof originalCb != 'object') {
           throw new Error("Unable to bind to '" + type + "' because the given callback is not a function or an object");
@@ -300,14 +304,20 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       this.off = function() {
         var $element, type, callback;
-        var args = utils.toArray(arguments);
+        var lastIndex = arguments.length - 1;
 
-        if (typeof args[args.length - 1] == "function") {
-          callback = args.pop();
+        if (typeof arguments[lastIndex] == "function") {
+          callback = arguments[lastIndex];
+          lastIndex -= 1;
         }
 
-        $element = (args.length == 2) ? $(args.shift()) : this.$node;
-        type = args[0];
+        if (lastIndex == 1) {
+          $element = $(arguments[0]);
+          type = arguments[1];
+        } else {
+          $element = this.$node;
+          type = arguments[0];
+        }
 
         return $element.off(type, callback);
       };
@@ -317,7 +327,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         Object.keys(ruleInfo).forEach(function(r) {
           if (!r in this.attr) {
-            throw new Error('Component "' + this.describe + '" wants to listen on "' + r + '" but no such attribute was defined.');
+            throw new Error('Component "' + this.toString() + '" wants to listen on "' + r + '" but no such attribute was defined.');
           }
           rules[this.attr[r]] = ruleInfo[r];
         }, this);
@@ -338,11 +348,16 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     }
 
     function attachTo(selector/*, options args */) {
+      // unpacking arguments by hand benchmarked faster
+      var l = arguments.length;
+      var args = new Array(l - 1);
+      for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
+
       if (!selector) {
         throw new Error("Component needs to be attachTo'd a jQuery object, native node or selector string");
       }
 
-      var options = utils.merge.apply(utils, utils.toArray(arguments, 1));
+      var options = utils.merge.apply(utils, args);
 
       $(selector).each(function(i, node) {
         new this(node, options);
@@ -353,7 +368,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     // takes an unlimited number of mixin functions as arguments
     // typical api call with 3 mixins: define(timeline, withTweetCapability, withScrollCapability);
     function define(/*mixins*/) {
-      var mixins = utils.toArray(arguments);
+      // unpacking arguments by hand benchmarked faster
+      var l = arguments.length;
+      var mixins = new Array(l);
+      for (var i = 0; i < l; i++) mixins[i] = arguments[i];
 
       Component.toString = function() {
         var prettyPrintMixins = mixins.map(function(mixin) {
@@ -362,17 +380,17 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
             var m = mixin.toString().match(functionNameRegEx);
             return (m && m[1]) ? m[1] : "";
           } else {
-            return mixin.name;
+            return (mixin.name != "withBaseComponent") ? mixin.name : "";
           }
         }).filter(Boolean).join(', ');
         return prettyPrintMixins;
       };
 
-      Component.describe = Component.toString();
-
       //'options' is optional hash to be merged with 'defaults' in the component definition
       function Component(node, options) {
         options = options || {};
+
+        this.identity = componentId++;
 
         if (!node) {
           throw new Error("Component needs a node");
@@ -386,7 +404,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           this.$node = $(node);
         }
 
-        this.describe = this.constructor.describe;
+        this.toString = Component.toString;
+        if (window.DEBUG && window.DEBUG.enabled) {
+          this.describe = Component.toString();
+        }
 
         //merge defaults with supplied options
         //put options in attr.__proto__ to avoid merge overhead
@@ -400,13 +421,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         Object.keys(this.defaults || {}).forEach(function(key) {
           if (this.defaults[key] === null && this.attr[key] === null) {
-            throw new Error('Required attribute "' + key + '" not specified in attachTo for component "' + this.describe + '".');
+            throw new Error('Required attribute "' + key + '" not specified in attachTo for component "' + this.toString() + '".');
           }
         }, this);
 
         this.initialize.call(this, options);
-
-        this.trigger('componentInitialized');
       }
 
       Component.attachTo = attachTo;
@@ -588,7 +607,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
             action,
             '[' + name + ']',
             elemToString(elem),
-            component.constructor.describe,
+            component.constructor.toString(),
             fn && (fnName = fn.name || fn.displayName) && '->  ' + fnName
           );
         }
@@ -630,18 +649,18 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
     function parseEventArgs(instance, args) {
       var element, type, callback;
+      var end = args.length;
 
-      args = util.toArray(args);
-
-      if (typeof args[args.length-1] === 'function') {
-        callback = args.pop();
+      if (typeof args[end - 1] === 'function') {
+        end -= 1;
+        callback = args[end];
       }
 
-      if (typeof args[args.length-1] === 'object') {
-        args.pop();
+      if (typeof args[end - 1] === 'object') {
+        end -= 1;
       }
 
-      if (args.length == 2) {
+      if (end == 2) {
         element = args[0];
         type = args[1];
       } else {
@@ -670,7 +689,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       (this.reset = function() {
         this.components = [];
-        this.allInstances = [];
+        this.allInstances = {};
         this.events = [];
       }).call(this);
 
@@ -715,8 +734,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         this.instance = instance;
         this.events = [];
 
-        this.addTrigger = function() {};
-
         this.addBind = function(event) {
           this.events.push(event);
           registry.events.push(event);
@@ -741,7 +758,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         var inst = component.addInstance(instance);
 
-        this.allInstances.push(inst);
+        this.allInstances[instance.identity] = inst;
 
         return component;
       };
@@ -754,8 +771,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         componentInfo.removeInstance(instance);
 
         //remove from registry
-        var index = this.allInstances.indexOf(instInfo);
-        (index > -1)  && this.allInstances.splice(index, 1);
+        delete this.allInstances[instance.identity];
       };
 
       this.removeComponentInfo = function(componentInfo) {
@@ -775,41 +791,32 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return null;
       };
 
-      this.findInstanceInfo = function(which) {
-        var testFn;
-
-        if (which.node) {
-          //by instance (returns matched instance)
-          testFn = function(inst) {return inst.instance === which};
-        } else {
-          //by node (returns array of matches)
-          testFn = function(inst) {return inst.instance.node === which};
-        }
-
-        var matches = this.allInstances.filter(testFn);
-        if (!matches.length) {
-          return which.node ? null : [];
-        }
-        return which.node ? matches[0] : matches;
+      this.findInstanceInfo = function(instance) {
+          return this.allInstances[instance.identity] || null;
       };
 
-      this.trigger = function() {
-        var event = parseEventArgs(this, arguments),
-            instance = registry.findInstanceInfo(this);
-
-        if (instance) {
-          instance.addTrigger(event);
-        }
+      this.findInstanceInfoByNode = function(node) {
+          var result = [];
+          Object.keys(this.allInstances).forEach(function(k) {
+            var thisInstanceInfo = this.allInstances[k];
+            if(thisInstanceInfo.instance.node === node) {
+              result.push(thisInstanceInfo);
+            }
+          }, this);
+          return result;
       };
 
       this.on = function(componentOn) {
-        var otherArgs = util.toArray(arguments, 1);
-        var instance = registry.findInstanceInfo(this);
-        var boundCallback;
+        var instance = registry.findInstanceInfo(this), boundCallback;
+
+        // unpacking arguments by hand benchmarked faster
+        var l = arguments.length, i = 1;
+        var otherArgs = new Array(l - 1);
+        for (; i < l; i++) otherArgs[i - 1] = arguments[i];
 
         if (instance) {
           boundCallback = componentOn.apply(null, otherArgs);
-          if(boundCallback) {
+          if (boundCallback) {
             otherArgs[otherArgs.length-1] = boundCallback;
           }
           var event = parseEventArgs(this, otherArgs);
@@ -835,7 +842,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           registry.addInstance(this);
         });
 
-        this.after('trigger', registry.trigger);
         this.around('on', registry.on);
         this.after('off', registry.off);
         this.after('teardown', {obj:registry, fnName:'teardown'});
@@ -896,14 +902,18 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       //   base; //{a:2, b:6}
 
       merge: function(/*obj1, obj2,....deepCopy*/) {
-        if (!arguments.length) {
+        // unpacking arguments by hand benchmarked faster
+        var l = arguments.length,
+            i = 0,
+            args = new Array(l + 1);
+        for (; i < l; i++) args[i + 1] = arguments[i];
+
+        if (l === 0) {
           return {};
         }
-              
-        var args = this.toArray(arguments);
 
         //start with empty object so a copy is created
-        args.unshift({});
+        args[0] = {};
 
         if (args[args.length - 1] === true) {
           //jquery extend requires deep copy as first arg

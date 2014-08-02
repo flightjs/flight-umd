@@ -1,7 +1,7 @@
 {
   "name": "flight",
   "description": "Clientside component infrastructure",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "flight.js",
   "dependencies": {
     "jquery": ">=1.8.0"
