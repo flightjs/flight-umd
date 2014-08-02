@@ -1,4 +1,4 @@
-/*! Flight v1.0.2 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.3 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -254,13 +254,13 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
           data = $.extend(true, {}, this.attr.eventData, data);
         }
 
-        var returnVal = $element.trigger((event || type), data);
+        $element.trigger((event || type), data);
 
         if (defaultFn && !event.isDefaultPrevented()) {
           (this[defaultFn] || defaultFn).call(this);
         }
 
-        return returnVal;
+        return $element;
       };
 
       this.on = function() {
@@ -361,7 +361,8 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
       Component.toString = function() {
         var prettyPrintMixins = mixins.map(function(mixin) {
-          if ($.browser.msie) {
+          if (mixin.name == null) {
+            //function name property not supported by this browser, use regex
             var m = mixin.toString().match(functionNameRegEx);
             return (m && m[1]) ? m[1] : "";
           } else {
@@ -371,6 +372,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         return prettyPrintMixins;
       };
+
 
       Component.describe = Component.toString();
 
@@ -910,6 +912,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       //   base; //{a:2, b:6}
 
       merge: function(/*obj1, obj2,....deepCopy*/) {
+        if (!arguments.length) {
+          return {};
+        }
+              
         var args = this.toArray(arguments);
 
         //start with empty object so a copy is created
@@ -1148,7 +1154,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
     //******************************************************************************************
     // Event logging
     //******************************************************************************************
-    var logLevel = 'all';
+    var logLevel = [];
     logFilter = {actions: logLevel, eventNames: logLevel}; //no filter by default
 
     function filterEventLogsByAction(/*actions*/) {
@@ -1182,7 +1188,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";
 
         if (enable && window.console) {
           console.info('Booting in DEBUG mode');
-          console.info('You can filter event logging with DEBUG.events.logAll/logNone/logByName/logByAction');
+          console.info('You can configure event logging with DEBUG.events.logAll()/logNone()/logByName()/logByAction()');
         }
 
         window.DEBUG = this;
