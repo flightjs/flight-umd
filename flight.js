@@ -1,4 +1,4 @@
-/*! Flight v1.0.8 | (c) Twitter, Inc. | MIT License */
+/*! Flight v1.0.9 | (c) Twitter, Inc. | MIT License */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -168,8 +168,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     __webpack_require__(1),
     __webpack_require__(6),
     __webpack_require__(3),
-    __webpack_require__(5)
-  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, utils, compose, registry) {
+    __webpack_require__(5),
+    __webpack_require__(4),
+    __webpack_require__(7)
+  ], __WEBPACK_AMD_DEFINE_RESULT__ = (function(advice, utils, compose, registry, withLogging, debug) {
 
     var functionNameRegEx = /function (.*?)\s?\(/;
     var componentId = 0;
@@ -245,7 +247,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
 
         type = event.type || event;
 
-        if (window.DEBUG && window.DEBUG.enabled && window.postMessage) {
+        if (debug.enabled && window.postMessage) {
           checkSerializable.call(this, type, data);
         }
 
@@ -378,7 +380,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
     function define(/*mixins*/) {
       // unpacking arguments by hand benchmarked faster
       var l = arguments.length;
-      var mixins = new Array(l);
+      var mixins = new Array(l + 3); //add three for common mixins
       for (var i = 0; i < l; i++) mixins[i] = arguments[i];
 
       Component.toString = function() {
@@ -394,7 +396,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         return prettyPrintMixins;
       };
 
-      if (window.DEBUG && window.DEBUG.enabled) {
+      if (debug.enabled) {
         Component.describe = Component.toString();
       }
 
@@ -416,7 +418,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
         }
 
         this.toString = Component.toString;
-        if (window.DEBUG && window.DEBUG.enabled) {
+        if (debug.enabled) {
           this.describe = this.toString();
         }
 
@@ -443,8 +445,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
       Component.teardownAll = teardownAll;
 
       // prepend common mixins to supplied list, then mixin all flavors
+      if (debug.enabled) {
+        mixins.unshift(withLogging);
+      }
       mixins.unshift(withBaseComponent, advice.withAdvice, registry.withRegistration);
-
       compose.mixin(Component.prototype, mixins);
 
       return Component;
@@ -618,13 +622,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// =============
             action,
             '[' + name + ']',
             elemToString(elem),
-            component.constructor.toString(),
-            fn && (fnName = fn.name || fn.displayName) && '->  ' + fnName
+            component.constructor.describe.split(' ').slice(0,3).join(' ') //two mixins only
           );
         }
       }
     }
-
 
     function withLogging() {
       this.before('trigger', function() {
